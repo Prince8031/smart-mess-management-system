@@ -36,10 +36,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(activeUser.role)) {
     const redirectPath =
       activeUser.role === 'admin'
-        ? '/admin/dashboard'
+        ? '/admin'
         : activeUser.role === 'manager'
-        ? '/manager/dashboard'
-        : '/student/dashboard';
+        ? '/manager'
+        : '/student';
 
     return <Navigate to={redirectPath} replace />;
   }
