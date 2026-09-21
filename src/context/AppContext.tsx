@@ -113,16 +113,22 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-function getStorage<T>(key: string, fallback: T): T {
+export function getStorage<T>(key: string, fallback: T): T {
   try {
     const item = localStorage.getItem(`smart_mess_${key}`);
-    return item ? JSON.parse(item) : fallback;
+    if (!item) return fallback;
+
+    const parsed = JSON.parse(item);
+    if (Array.isArray(parsed) && parsed.length === 0) return fallback;
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length === 0) return fallback;
+
+    return parsed;
   } catch {
     return fallback;
   }
 }
 
-function setStorage<T>(key: string, value: T): void {
+export function setStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(`smart_mess_${key}`, JSON.stringify(value));
   } catch (e) {
@@ -308,16 +314,119 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const resetAllData = () => {
-    setStudents([]);
-    setManagers([]);
-    setMenus([]);
-    setInventory([]);
-    setComplaints([]);
-    setNotices([]);
-    setBills([]);
-    setPayments([]);
-    setAttendance([]);
+    setStudents(INITIAL_STUDENTS);
+    setManagers(INITIAL_MANAGERS);
+    setMenus(INITIAL_MENUS);
+    setInventory(INITIAL_INVENTORY);
+    setComplaints(INITIAL_COMPLAINTS);
+    setNotices(INITIAL_NOTICES);
+    setBills(INITIAL_BILLS);
+    setPayments(INITIAL_PAYMENTS);
+    setAttendance(INITIAL_ATTENDANCE);
     setSettings(INITIAL_SETTINGS);
+  };
+
+  const applyAttendanceUpdate = (date: string, meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner', records: Array<{ studentId: string; rollNo: string; studentName?: string; roomNo?: string; hostelBlock?: string; status: boolean }>) => {
+    setAttendance((prev) => {
+      const baseById = new Map(prev.filter((item) => item.date === date).map((item) => [item.studentId || item.rollNo, item]));
+      const next = prev.filter((item) => item.date !== date);
+
+      const updated = records.map((studentRecord) => {
+        const existing = baseById.get(studentRecord.studentId) || baseById.get(studentRecord.rollNo);
+        const now = new Date().toISOString();
+        const merged = existing ? { ...existing } : {
+          id: `attendance-${Date.now()}-${studentRecord.studentId}`,
+          studentId: studentRecord.studentId,
+          rollNo: studentRecord.rollNo,
+          studentName: studentRecord.studentName || 'Student',
+          roomNo: studentRecord.roomNo || 'N/A',
+          hostelBlock: studentRecord.hostelBlock || 'Hostel 2 (Boys)',
+          date,
+          breakfast: false,
+          lunch: false,
+          snacks: false,
+          dinner: false,
+          totalPresent: 0,
+          totalMeals: 4,
+          updatedAt: now,
+          updatedBy: 'System',
+        } as AttendanceRecord;
+
+        merged[meal] = studentRecord.status;
+        merged[`${meal}Detail`] = { status: studentRecord.status, markedAt: now, markedBy: 'System' };
+        merged.updatedAt = now;
+        merged.updatedBy = 'System';
+        merged.totalPresent = Number(Boolean(merged.breakfast)) + Number(Boolean(merged.lunch)) + Number(Boolean(merged.snacks)) + Number(Boolean(merged.dinner));
+
+        return merged;
+      });
+
+      return [...updated, ...next];
+    });
+  };
+
+  const toggleMealAttendance = async (recordId: string, meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner') => {
+    const target = attendance.find((item) => item.id === recordId || item.studentId === recordId || item.rollNo === recordId);
+    if (!target) return;
+
+    const nextStatus = !target[meal];
+    const updatePayload = {
+      ...target,
+      [meal]: nextStatus,
+      [`${meal}Detail`]: { status: nextStatus, markedAt: new Date().toISOString(), markedBy: 'Admin' },
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'Admin',
+    } as AttendanceRecord;
+    updatePayload.totalPresent = Number(Boolean(updatePayload.breakfast)) + Number(Boolean(updatePayload.lunch)) + Number(Boolean(updatePayload.snacks)) + Number(Boolean(updatePayload.dinner));
+
+    setAttendance((prev) => prev.map((item) => (item.id === recordId || item.studentId === recordId || item.rollNo === recordId ? updatePayload : item)));
+
+    if (isBackendConnected) {
+      try {
+        await attendanceAPI.patchMealAttendance(recordId, { meal, status: nextStatus });
+      } catch {
+        // local state remains as optimistic update
+      }
+    }
+  };
+
+  const batchMarkAttendance = async (date: string, meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner', present: boolean) => {
+    const records = students.map((student) => ({
+      studentId: student.id,
+      rollNo: student.studentId || student.id,
+      studentName: student.name,
+      roomNo: student.roomNo || 'N/A',
+      hostelBlock: student.hostelBlock || 'Hostel 2 (Boys)',
+      status: present,
+    }));
+
+    if (isBackendConnected) {
+      try {
+        await attendanceAPI.markAttendance({ date, meal, records });
+      } catch {
+        // fall through to local state update
+      }
+    }
+
+    applyAttendanceUpdate(date, meal, records);
+  };
+
+  const saveMealAttendance = async (
+    date: string,
+    meal: 'breakfast' | 'lunch' | 'snacks' | 'dinner',
+    studentRecords: { studentId: string; rollNo: string; studentName?: string; roomNo?: string; hostelBlock?: string; status: boolean }[]
+  ) => {
+    if (studentRecords.length === 0) return;
+
+    if (isBackendConnected) {
+      try {
+        await attendanceAPI.markAttendance({ date, meal, records: studentRecords });
+      } catch {
+        // fall through to local state update
+      }
+    }
+
+    applyAttendanceUpdate(date, meal, studentRecords);
   };
 
   const resetToDefaults = resetAllData;
@@ -373,9 +482,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         payments,
         recordPayment: async () => undefined,
         attendance,
-        toggleMealAttendance: async () => undefined,
-        batchMarkAttendance: async () => undefined,
-        saveMealAttendance: async () => undefined,
+        toggleMealAttendance,
+        batchMarkAttendance,
+        saveMealAttendance,
         settings,
         updateSettings: async () => undefined,
         resetAllData,
