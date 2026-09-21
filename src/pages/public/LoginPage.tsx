@@ -13,7 +13,6 @@ import {
   AlertCircle,
   UserPlus,
   ArrowRight,
-  Database,
   CheckCircle2,
 } from 'lucide-react';
 import { authAPI } from '../../services/api';
@@ -99,15 +98,14 @@ export const LoginPage: React.FC = () => {
           else navigate('/student');
         }
       } else {
-        // If credentials not found on API, try app fallback
         const appFallbackSuccess = appLogin(email, role);
         if (appFallbackSuccess) {
-          switchRole(role);
+          void switchRole(role);
           if (role === 'admin') navigate('/admin');
           else if (role === 'manager') navigate('/manager');
           else navigate('/student');
         } else {
-          setError(result.message || 'Invalid credentials. Please use the quick demo accounts below.');
+          setError(result.message || 'Invalid credentials.');
         }
       }
     } catch (err: any) {
@@ -171,7 +169,6 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Mode Switcher Tabs */}
           <div className="flex border-b border-slate-200 dark:border-slate-800 mb-5">
             <button
               type="button"
@@ -206,7 +203,6 @@ export const LoginPage: React.FC = () => {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             {mode === 'login' && (
-              /* Role Selector Tabs */
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Select Your Role
@@ -232,7 +228,7 @@ export const LoginPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setRole('manager');
-                      setEmail('manager@messsystem.com');
+                      setEmail('');
                     }}
                     className={`flex flex-col items-center py-2 px-1 rounded-lg text-xs font-medium transition-all ${
                       role === 'manager'
@@ -248,7 +244,7 @@ export const LoginPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setRole('student');
-                      setEmail('student@messsystem.com');
+                      setEmail('');
                     }}
                     className={`flex flex-col items-center py-2 px-1 rounded-lg text-xs font-medium transition-all ${
                       role === 'student'
@@ -263,52 +259,8 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {mode === 'register' && (
-              <>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Rohan Verma"
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
+            {mode === 'register' && (<> ... </>)}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Student Roll No
-                    </label>
-                    <input
-                      type="text"
-                      value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="e.g. CS2024-089"
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Room & Block
-                    </label>
-                    <input
-                      type="text"
-                      value={roomNumber}
-                      onChange={(e) => setRoomNumber(e.target.value)}
-                      placeholder="e.g. Room 304, Block B"
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Email / Username */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Email Address
@@ -326,7 +278,6 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Password
@@ -338,13 +289,12 @@ export const LoginPage: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="????????"
                   className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
             {mode === 'login' && (
               <div className="flex items-center justify-between pt-1">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -366,7 +316,6 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -391,63 +340,27 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Quick Demo Credentials helper */}
           {mode === 'login' && (
             <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  1-Click Seeded Demo Credentials
+                  Initial Admin Login
                 </p>
-                <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  <Database className="w-3 h-3" /> MongoDB Ready
-                </span>
               </div>
-              <div className="space-y-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('admin', 'admin@messsystem.com')}
-                  className="w-full p-2 text-left rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs flex items-center justify-between transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                >
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                    <div>
-                      <span className="text-slate-700 dark:text-slate-300 font-semibold block">Chief Warden (Admin)</span>
-                      <span className="text-[10px] text-slate-400">admin@messsystem.com / Password@123</span>
-                    </div>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('admin', 'admin@messsystem.com')}
+                className="w-full p-2 text-left rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs flex items-center justify-between transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <div>
+                    <span className="text-slate-700 dark:text-slate-300 font-semibold block">System Administrator</span>
+                    <span className="text-[10px] text-slate-400">admin@messsystem.com / Password@123</span>
                   </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium">Auto-Fill</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('manager', 'manager@messsystem.com')}
-                  className="w-full p-2 text-left rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs flex items-center justify-between transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                >
-                  <div className="flex items-center gap-2">
-                    <ChefHat className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <div>
-                      <span className="text-slate-700 dark:text-slate-300 font-semibold block">Rajesh Pandey (Manager)</span>
-                      <span className="text-[10px] text-slate-400">manager@messsystem.com / Password@123</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-medium">Auto-Fill</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('student', 'student@messsystem.com')}
-                  className="w-full p-2 text-left rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs flex items-center justify-between transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                >
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <div>
-                      <span className="text-slate-700 dark:text-slate-300 font-semibold block">Aarav Sharma (Student)</span>
-                      <span className="text-[10px] text-slate-400">student@messsystem.com / Password@123</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-medium">Auto-Fill</span>
-                </button>
-              </div>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium">Auto-Fill</span>
+              </button>
             </div>
           )}
         </div>
@@ -457,7 +370,7 @@ export const LoginPage: React.FC = () => {
             onClick={() => navigate('/')}
             className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
           >
-            ← Back to Home Page
+            ? Back to Home Page
           </button>
         </div>
       </div>

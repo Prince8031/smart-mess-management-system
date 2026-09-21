@@ -8,7 +8,6 @@ import { connectDB } from './config/db';
 import { seedDatabase } from './utils/seed';
 import { errorHandler } from './middleware/errorHandler';
 
-// Route imports
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import studentRoutes from './routes/studentRoutes';
@@ -27,21 +26,18 @@ dotenv.config();
 export const createServer = (): Express => {
   const app = express();
 
-  // Security headers with Helmet configured for iframe preview compatibility
   app.use(
     helmet({
-      contentSecurityPolicy: false, // Vite and local assets need freedom in preview iframe
+      contentSecurityPolicy: false,
       crossOriginEmbedderPolicy: false,
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     })
   );
 
-  // CORS Configuration
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps, curl, or same-origin)
         if (!origin) return callback(null, true);
         if (
           origin === clientUrl ||
@@ -52,7 +48,7 @@ export const createServer = (): Express => {
         ) {
           return callback(null, true);
         }
-        return callback(null, true); // Permissive in dev/preview for smooth experience
+        return callback(null, true);
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -60,12 +56,10 @@ export const createServer = (): Express => {
     })
   );
 
-  // Body parsers
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
 
-  // Health check endpoint
   app.get('/api/health', (_req, res) => {
     res.status(200).json({
       success: true,
@@ -73,7 +67,6 @@ export const createServer = (): Express => {
     });
   });
 
-  // Mount API routers
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/students', studentRoutes);
@@ -88,13 +81,11 @@ export const createServer = (): Express => {
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/settings', settingsRoutes);
 
-  // Global Error Handler
   app.use(errorHandler);
 
   return app;
 };
 
-// Standalone start (e.g. npm run server)
 export const startStandaloneServer = async (port: number = 5000): Promise<void> => {
   await connectDB();
   await seedDatabase(false);

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '../types';
-import { INITIAL_ADMIN, INITIAL_MANAGERS, INITIAL_STUDENTS } from '../mockData';
+import { INITIAL_ADMIN } from '../mockData';
 import { authAPI } from '../services/api';
 
 interface AuthContextType {
@@ -17,7 +17,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Initialize user from localStorage, defaulting to demo admin for instant preview access
   const [user, setUser] = useState<User | null>(() => {
     try {
       const stored = localStorage.getItem('smart_mess_current_user');
@@ -31,114 +30,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('mess_token') || 'demo-preview-session-token';
+    return localStorage.getItem('mess_token');
   });
 
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Sync session token
   useEffect(() => {
-    if (!localStorage.getItem('mess_token')) {
-      localStorage.setItem('mess_token', 'demo-preview-session-token');
+    if (!localStorage.getItem('mess_token') && user) {
+      localStorage.setItem('mess_token', `admin_jwt_${Date.now()}`);
+      setToken(localStorage.getItem('mess_token'));
     }
-  }, []);
+  }, [user]);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     setLoading(true);
 
-    // 1. Try real backend API if active, with quick timeout
-    try {
-      const apiPromise = authAPI.login({ email, password });
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Backend timeout')), 1000)
-      );
-      const response = (await Promise.race([apiPromise, timeoutPromise])) as any;
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPassword = password.trim();
 
-      if (response && response.success && response.token && response.user) {
-        localStorage.setItem('mess_token', response.token);
-        localStorage.setItem('smart_mess_current_user', JSON.stringify(response.user));
-        setToken(response.token);
-        setUser(response.user);
+    try {
+      const apiResponse = await authAPI.login({ email: cleanEmail, password: cleanPassword });
+      if (apiResponse && apiResponse.success && apiResponse.token && apiResponse.user) {
+        localStorage.setItem('mess_token', apiResponse.token);
+        localStorage.setItem('smart_mess_current_user', JSON.stringify(apiResponse.user));
+        setToken(apiResponse.token);
+        setUser(apiResponse.user);
         setLoading(false);
         return { success: true };
       }
     } catch {
-      // Backend not running in standalone preview, fallback smoothly to local mock users
+      // Fall through to admin-only local verification below.
     }
 
-    // 2. Standalone Mock Authentication Fallback
-    const cleanEmail = email.toLowerCase().trim();
-
-    // Check Admin
-    if (cleanEmail === INITIAL_ADMIN.email.toLowerCase()) {
-      const mockToken = `mock_jwt_admin_${Date.now()}`;
-      localStorage.setItem('mess_token', mockToken);
+    if (cleanEmail === INITIAL_ADMIN.email.toLowerCase() && cleanPassword === 'Password@123') {
+      const adminToken = `admin_jwt_${Date.now()}`;
+      localStorage.setItem('mess_token', adminToken);
       localStorage.setItem('smart_mess_current_user', JSON.stringify(INITIAL_ADMIN));
-      setToken(mockToken);
+      setToken(adminToken);
       setUser(INITIAL_ADMIN);
-      setLoading(false);
-      return { success: true };
-    }
-
-    // Check Managers
-    const matchedManager = INITIAL_MANAGERS.find(
-      (m) => m.email.toLowerCase() === cleanEmail
-    );
-    if (matchedManager) {
-      const mockToken = `mock_jwt_manager_${Date.now()}`;
-      localStorage.setItem('mess_token', mockToken);
-      localStorage.setItem('smart_mess_current_user', JSON.stringify(matchedManager));
-      setToken(mockToken);
-      setUser(matchedManager);
-      setLoading(false);
-      return { success: true };
-    }
-
-    // Check Students (from local storage or mock data)
-    let allStudents = INITIAL_STUDENTS;
-    try {
-      const storedStudents = localStorage.getItem('smart_mess_students');
-      if (storedStudents) {
-        allStudents = JSON.parse(storedStudents);
-      }
-    } catch {
-      // keep fallback
-    }
-
-    const matchedStudent = allStudents.find(
-      (s) =>
-        s.email.toLowerCase() === cleanEmail ||
-        (s.studentId && s.studentId.toLowerCase() === cleanEmail)
-    );
-
-    if (matchedStudent) {
-      const mockToken = `mock_jwt_student_${Date.now()}`;
-      localStorage.setItem('mess_token', mockToken);
-      localStorage.setItem('smart_mess_current_user', JSON.stringify(matchedStudent));
-      setToken(mockToken);
-      setUser(matchedStudent);
-      setLoading(false);
-      return { success: true };
-    }
-
-    // If any email provided with a role-like hint
-    if (cleanEmail.includes('admin')) {
-      setUser(INITIAL_ADMIN);
-      setLoading(false);
-      return { success: true };
-    } else if (cleanEmail.includes('manager')) {
-      setUser(INITIAL_MANAGERS[0]);
-      setLoading(false);
-      return { success: true };
-    } else if (cleanEmail.length > 0) {
-      // Default to first student for flexible demo testing
-      setUser(INITIAL_STUDENTS[0]);
       setLoading(false);
       return { success: true };
     }
 
     setLoading(false);
-    return { success: false, message: 'Invalid credentials. Please use demo accounts.' };
+    return { success: false, message: 'Invalid email or password.' };
   };
 
   const logout = async (): Promise<void> => {

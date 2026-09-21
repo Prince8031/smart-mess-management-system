@@ -10,7 +10,6 @@ const PORT = 3000;
 async function startServer() {
   console.log('Initializing Smart Mess Management System Full-Stack Server...');
 
-  // 1. Initialize MongoDB connection and seed defaults
   try {
     await connectDB();
     await seedDatabase(false);
@@ -18,10 +17,8 @@ async function startServer() {
     console.error('Database connection error:', err);
   }
 
-  // 2. Initialize API Express Application
   const app = createApiServer();
 
-  // 3. Mount Vite in development or serve static dist in production
   if (process.env.NODE_ENV !== 'production') {
     console.log('Mounting Vite dev server middleware on port 3000...');
     const vite = await createViteServer({
@@ -38,16 +35,14 @@ async function startServer() {
     });
   }
 
-  // 4. Start listening on 0.0.0.0:3000
   app.get('/', (_req, res) => {
-    res.status(200).json({success:true, message: 'Smart Mess Management System API is running!'});
+    res.status(200).json({ success: true, message: 'Smart Mess Management System API is running!' });
   });
-    
+
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Smart Mess Management System running on http://0.0.0.0:${PORT}`);
+    console.log(`? Smart Mess Management System running on http://0.0.0.0:${PORT}`);
   });
 }
-
 
 startServer().catch((err) => {
   console.error('Fatal failure starting server:', err);
